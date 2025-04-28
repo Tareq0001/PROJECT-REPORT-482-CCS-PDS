@@ -1,0 +1,32 @@
+#include <mpi.h>
+#include <stdio.h>
+#include <string.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, next, prev;
+    char send_msg[100], recv_msg[100];
+    MPI_Status status;
+
+    // Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Determine neighbors in the ring
+    next = (rank + 1) % size; // Successor
+    prev = (rank - 1 + size) % size; // Predecessor
+
+    // Prepare the message to send
+    snprintf(send_msg, sizeof(send_msg), "Message from process %d", rank);
+
+    // Send to next process and receive from previous process
+    MPI_Sendrecv(send_msg, strlen(send_msg) + 1, MPI_CHAR, next, 0,
+                 recv_msg, 100, MPI_CHAR, prev, 0, MPI_COMM_WORLD, &status);
+
+    // Print the received message
+    printf("Process %d received: %s\n", rank, recv_msg);
+
+    // Finalize MPI
+    MPI_Finalize();
+    return 0;
+}

@@ -1,0 +1,62 @@
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, token = 0, next, prev;
+    int has_token, print_request;
+    MPI_Status status;
+
+    // Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Ensure exactly 3 processes
+    if (size != 3) {
+        if (rank == 0) {
+            printf("This program requires exactly 3 processes.\n");
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Determine neighbors in the ring
+    next = (rank + 1) % size;
+    prev = (rank - 1 + size) % size;
+
+    // Process 0 initially holds the token
+    has_token = (rank == 0) ? 1 : 0;
+
+    // Simulate for a few iterations
+    for (int i = 0; i < 3; i++) {
+        // Simulate a random print request (0 or 1)
+        print_request = rand() % 2;
+
+        if (has_token && print_request) {
+            // Process has the token and wants to print
+            printf("Process %d is printing (iteration %d)\n", rank, i);
+            sleep(1); // Simulate printing time
+        }
+
+        // Pass the token to the next process
+        if (has_token) {
+            MPI_Send(&token, 1, MPI_INT, next, 0, MPI_COMM_WORLD);
+            has_token = 0;
+            printf("Process %d sent token to Process %d\n", rank, next);
+        }
+
+        // Receive the token from the previous process
+        MPI_Recv(&token, 1, MPI_INT, prev, 0, MPI_COMM_WORLD, &status);
+        has_token = 1;
+        printf("Process %d received token from Process %d\n", rank, prev);
+
+        // Barrier to synchronize output for clarity
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+
+    // Finalize MPI
+    MPI_Finalize();
+    return 0;
+}
